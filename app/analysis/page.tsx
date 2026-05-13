@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface AnalysisResult {
   summary: string;
@@ -18,10 +18,17 @@ interface AnalysisResult {
   };
 }
 
-interface ApiResponse {
-  result: AnalysisResult;
-  id: string;
-}
+type JobStatus = 'PENDING' | 'PROCESSING' | 'DONE' | 'ERROR';
+
+const STATUS_LABEL: Record<JobStatus, string> = {
+  PENDING: '대기 중 (에이전트가 곧 처리합니다)',
+  PROCESSING: '명리학 분석 중...',
+  DONE: '완료',
+  ERROR: '실패',
+};
+
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 3 * 60 * 1000; // 3분
 
 export default function AnalysisPage() {
   const [formData, setFormData] = useState({
@@ -31,11 +38,62 @@ export default function AnalysisPage() {
     gender: '',
   });
   const [loading, setLoading] = useState(false);
+  const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pollAbortRef = useRef<{ aborted: boolean }>({ aborted: false });
+
+  // 컴포넌트 unmount 시 polling 중단
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current.aborted = true;
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const pollJob = async (jobId: string): Promise<void> => {
+    const startTime = Date.now();
+    const localAbort = { aborted: false };
+    pollAbortRef.current = localAbort;
+
+    while (!localAbort.aborted) {
+      if (Date.now() - startTime > POLL_TIMEOUT_MS) {
+        setError('분석이 시간 내에 완료되지 않았습니다. 잠시 후 다시 시도해주세요.');
+        setLoading(false);
+        setJobStatus(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/analysis/${jobId}`);
+        if (!res.ok) {
+          throw new Error('상태 조회 실패');
+        }
+        const data = await res.json();
+        const status = data.status as JobStatus;
+        setJobStatus(status);
+
+        if (status === 'DONE') {
+          setResult(data.result as AnalysisResult);
+          setLoading(false);
+          return;
+        }
+        if (status === 'ERROR') {
+          setError(data.error || '분석 중 오류가 발생했습니다.');
+          setLoading(false);
+          setJobStatus(null);
+          return;
+        }
+      } catch (e) {
+        // 네트워크 일시 오류 — 계속 polling
+        console.warn('[poll] retry:', e);
+      }
+
+      await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,6 +106,7 @@ export default function AnalysisPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setJobStatus('PENDING');
 
     try {
       const res = await fetch('/api/analysis', {
@@ -58,15 +117,15 @@ export default function AnalysisPage() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || '분석 중 오류가 발생했습니다.');
+        throw new Error(errData.error || '요청 생성 중 오류가 발생했습니다.');
       }
 
-      const data: ApiResponse = await res.json();
-      setResult(data.result);
+      const { jobId } = (await res.json()) as { jobId: string };
+      await pollJob(jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
-    } finally {
       setLoading(false);
+      setJobStatus(null);
     }
   };
 
@@ -157,12 +216,17 @@ export default function AnalysisPage() {
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="inline-block w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-              분석 중...
+              {jobStatus ? STATUS_LABEL[jobStatus] : '분석 중...'}
             </span>
           ) : (
             '분석하기'
           )}
         </button>
+        {loading && (
+          <p className="mt-2 text-xs text-slate-500 text-center">
+            로컬 에이전트가 명리학 풀이를 작성 중입니다. 보통 10~30초 소요됩니다.
+          </p>
+        )}
       </form>
 
       {/* 결과 영역 */}

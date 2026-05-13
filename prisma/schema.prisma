@@ -23,6 +23,37 @@ model SajuReading {
   @@map("saju_readings")
 }
 
+enum AnalysisJobStatus {
+  PENDING      // 생성됨, 에이전트 대기
+  PROCESSING   // 에이전트가 처리 중
+  DONE         // 완료
+  ERROR        // 실패
+}
+
+// 웹 → 에이전트 비동기 작업 큐
+// 웹이 INSERT(PENDING), 로컬 myungundo-agent가 polling → claude 호출 → UPDATE(DONE/ERROR)
+// 웹이 polling으로 status 확인 → 결과 표시
+model AnalysisJob {
+  id         String             @id @default(cuid())
+  // 입력
+  name       String?
+  birthdate  String
+  birthtime  String?
+  gender     String
+  sajuInfo   Json               // 사주 계산 결과 (웹에서 미리 계산해서 저장)
+  // 상태
+  status     AnalysisJobStatus  @default(PENDING)
+  result     Json?
+  error      String?            @db.Text
+  // 타이밍
+  createdAt  DateTime           @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  @@index([status, createdAt])
+  @@map("analysis_jobs")
+}
+
 enum WikiCategory {
   BASICS  // 기초이론
   SAJU    // 사주팔자
