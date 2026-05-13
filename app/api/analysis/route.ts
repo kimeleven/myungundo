@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { anthropic } from '@/lib/claude';
 import { prisma } from '@/lib/prisma';
 import { getSajuPillars } from '@/lib/saju';
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
         birthdate,
         birthtime: birthtime || null,
         gender,
-        result: fullResult,
+        result: fullResult as unknown as Prisma.InputJsonValue,
       },
     });
 
