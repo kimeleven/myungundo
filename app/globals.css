@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #020617;
+  --foreground: #f1f5f9;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-noto-sans-kr), sans-serif;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-lg hover:bg-amber-300 transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply border border-amber-400 text-amber-400 font-semibold px-6 py-3 rounded-lg hover:bg-amber-400 hover:text-slate-950 transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-slate-900 border border-slate-800 rounded-xl p-6;
+  }
+
+  .input-field {
+    @apply w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent placeholder-slate-500;
+  }
+
+  .select-field {
+    @apply w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent;
+  }
+}

@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model SajuReading {
+  id        String   @id @default(cuid())
+  name      String?
+  birthdate String
+  birthtime String?
+  gender    String
+  result    Json
+  createdAt DateTime @default(now())
+
+  @@map("saju_readings")
+}
+
+enum WikiCategory {
+  BASICS  // 기초이론
+  SAJU    // 사주팔자
+  SINSAL  // 신살
+  UNSE    // 운세흐름
+  GUNGAP  // 궁합
+  SEO     // 띠별운세
+}
+
+model WikiArticle {
+  id        String       @id @default(cuid())
+  slug      String       @unique
+  title     String
+  category  WikiCategory
+  content   String       @db.Text
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("wiki_articles")
+}
+
+model DailyHoroscope {
+  id        String   @id @default(cuid())
+  zodiac    String
+  year      Int
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([zodiac, year])
+  @@map("daily_horoscopes")
+}
