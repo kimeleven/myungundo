@@ -11,6 +11,8 @@ const isOAuth = key.startsWith('sk-ant-oat');
 export const anthropic = new Anthropic(
   isOAuth
     ? {
+        // OAuth 모드: apiKey를 null로 명시 (SDK가 env에서 자동으로 끌어와 x-api-key 헤더 동시 발송 방지)
+        apiKey: null,
         authToken: key,
         defaultHeaders: { 'anthropic-beta': 'oauth-2025-04-20' },
       }
